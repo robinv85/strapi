@@ -184,6 +184,9 @@ module.exports = function(strapi) {
 
       strapi.contentTypes[model.uid] = model;
     });
+
+    // merge global configs with plugin's config
+    _.merge(plugin.config, strapi.config.get(['plugins', pluginName], {}));
   });
 
   const REQUIRED_MIDDLEWARES = [

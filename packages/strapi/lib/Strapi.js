@@ -107,6 +107,11 @@ class Strapi extends EventEmitter {
       environment: _.toLower(process.env.NODE_ENV) || 'development',
       admin: {},
       paths: CONFIG_PATHS,
+      server: {
+        admin: {
+          autoOpen: false,
+        },
+      },
       middleware: {
         timeout: 5000,
         load: {

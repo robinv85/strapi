@@ -10,7 +10,7 @@ const _ = require('lodash');
 const stopProcess = require('./utils/stop-process');
 const { trackUsage, captureStderr } = require('./utils/usage');
 const packageJSON = require('./resources/json/package.json');
-const databaseJSON = require('./resources/json/database.json.js');
+const createConfig = require('./resources/json/config.js');
 
 module.exports = async function createProject(
   scope,
@@ -54,17 +54,9 @@ module.exports = async function createProject(
     // ensure node_modules is created
     await fse.ensureDir(join(rootPath, 'node_modules'));
 
-    await Promise.all(
-      ['development', 'staging', 'production'].map(env => {
-        return fse.writeJSON(
-          join(rootPath, `config/environments/${env}/database.json`),
-          databaseJSON({
-            connection,
-            env,
-          }),
-          { spaces: 2 }
-        );
-      })
+    await fse.writeFile(
+      join(rootPath, `config/config.js`),
+      createConfig({ connection })
     );
   } catch (err) {
     await fse.remove(scope.rootPath);
