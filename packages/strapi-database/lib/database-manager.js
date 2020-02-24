@@ -24,7 +24,9 @@ class DatabaseManager {
     this.initialized = true;
 
     const connectorsToInitialize = [];
-    for (const connection of Object.values(this.strapi.config.connections)) {
+    for (const connection of Object.values(
+      this.strapi.config.get('database.connections')
+    )) {
       const { connector } = connection;
       if (!connectorsToInitialize.includes(connector)) {
         connectorsToInitialize.push(connector);

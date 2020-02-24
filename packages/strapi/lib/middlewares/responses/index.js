@@ -26,14 +26,11 @@ module.exports = strapi => {
         }
 
         // Set X-Powered-By header.
-        if (
-          _.get(strapi.config.currentEnvironment.response, 'poweredBy.enabled')
-        ) {
+        if (strapi.config.get('middleware.settings.poweredBy') !== false) {
           ctx.set(
             'X-Powered-By',
-            _.get(
-              strapi.config.currentEnvironment.response,
-              'poweredBy.value',
+            strapi.config.get(
+              'middleware.settings.poweredBy.value',
               'Strapi <strapi.io>'
             )
           );

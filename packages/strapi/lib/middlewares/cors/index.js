@@ -20,9 +20,6 @@ module.exports = strapi => {
      * Initialize the hook
      */
     initialize() {
-      if (strapi.config.currentEnvironment.security.cors.enabled !== true)
-        return;
-
       const {
         origin,
         expose,

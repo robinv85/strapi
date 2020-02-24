@@ -28,20 +28,6 @@ module.exports = function(strapi) {
   // Set connections.
   strapi.connections = {};
 
-  // Set current environment config.
-  strapi.config.currentEnvironment =
-    strapi.config.environments[strapi.config.environment] || {};
-
-  const defaultConnection =
-    strapi.config.currentEnvironment.database.defaultConnection;
-
-  // Set current connections.
-  strapi.config.connections = _.get(
-    strapi.config.currentEnvironment,
-    'database.connections',
-    {}
-  );
-
   if (_.get(strapi.config, 'language.enabled')) {
     strapi.config.language.locales = Object.keys(
       _.get(strapi.config, 'locales', {})
@@ -82,7 +68,8 @@ module.exports = function(strapi) {
         globalId: model.globalId || _.upperFirst(_.camelCase(modelName)),
         collectionName:
           model.collectionName || `${modelName}`.toLocaleLowerCase(),
-        connection: model.connection || defaultConnection,
+        connection:
+          model.connection || strapi.config.get('database.defaultConnection'),
       });
 
       strapi.contentTypes[model.uid] = model;
@@ -163,8 +150,7 @@ module.exports = function(strapi) {
       identity: model.identity || _.upperFirst(key),
       globalId: model.globalId || _.upperFirst(_.camelCase(`admin-${key}`)),
       connection:
-        model.connection ||
-        strapi.config.currentEnvironment.database.defaultConnection,
+        model.connection || strapi.config.get('database.defaultConnection'),
     });
 
     strapi.contentTypes[model.uid] = model;
@@ -200,8 +186,7 @@ module.exports = function(strapi) {
         globalId:
           model.globalId || _.upperFirst(_.camelCase(`${pluginName}-${key}`)),
         connection:
-          model.connection ||
-          strapi.config.currentEnvironment.database.defaultConnection,
+          model.connection || strapi.config.get('database.defaultConnection'),
       });
 
       strapi.contentTypes[model.uid] = model;
@@ -279,8 +264,10 @@ module.exports = function(strapi) {
   }, {});
 
   // Enable hooks and dependencies related to the connections.
-  for (let name in strapi.config.connections) {
-    const connection = strapi.config.connections[name];
+  const connections = strapi.config.get('database.connections');
+
+  for (let name in connections) {
+    const connection = connections[name];
     const connector = connection.connector.replace('strapi-hook-', '');
 
     enableHookNestedDependencies(strapi, connector, flattenHooksConfig);
@@ -342,17 +329,9 @@ module.exports = function(strapi) {
     {}
   );
 
-  // default settings
-  strapi.config.port =
-    _.get(strapi.config.currentEnvironment, 'server.port') ||
-    strapi.config.port;
-  strapi.config.host =
-    _.get(strapi.config.currentEnvironment, 'server.host') ||
-    strapi.config.host;
+  const serverConfig = strapi.config.get('server', {});
 
-  // proxy settings
-  const proxy = _.get(strapi.config.currentEnvironment, 'server.proxy', {});
-  strapi.config.proxy = proxy;
+  const proxy = strapi.config.get('server.proxy', {});
 
   // check if proxy is enabled and construct url
   strapi.config.url = proxy.enabled
@@ -362,17 +341,15 @@ module.exports = function(strapi) {
         ssl: proxy.ssl,
       })
     : getURLFromSegments({
-        hostname: strapi.config.host,
-        port: strapi.config.port,
+        hostname: serverConfig.host,
+        port: serverConfig.port,
       });
 
-  const adminPath = _.get(
-    strapi.config.currentEnvironment.server,
-    'admin.path',
-    'admin'
-  );
+  const adminPath = strapi.config.get('server.admin.path', 'admin');
 
   strapi.config.admin.url = new URL(adminPath, strapi.config.url).toString();
+
+  console.log(strapi.config.middleware);
 };
 
 const enableHookNestedDependencies = function(
@@ -401,7 +378,7 @@ const enableHookNestedDependencies = function(
       .filter(models => {
         const apiModelsUsed = Object.keys(models).filter(model => {
           const connector = _.get(
-            strapi.config.connections,
+            strapi.config.get('database.connections'),
             models[model].connection,
             {}
           ).connector;

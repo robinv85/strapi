@@ -24,10 +24,10 @@ const isValidPluginName = plugin => {
 
 module.exports = {
   async init(ctx) {
-    const uuid = _.get(strapi, ['config', 'uuid'], false);
+    const uuid = strapi.config.get('uuid', false);
     const currentEnvironment = strapi.app.env;
-    const autoReload = _.get(strapi, ['config', 'autoReload'], false);
-    const strapiVersion = _.get(strapi.config, 'info.strapi', null);
+    const autoReload = strapi.config.get('autoReload', false);
+    const strapiVersion = strapi.config.get('info.strapi', null);
 
     return ctx.send({
       data: { uuid, currentEnvironment, autoReload, strapiVersion },
@@ -36,7 +36,7 @@ module.exports = {
 
   async getCurrentEnvironment(ctx) {
     try {
-      const autoReload = strapi.config.autoReload;
+      const autoReload = strapi.config.get('autoReload', false);
       return ctx.send({ autoReload, currentEnvironment: strapi.app.env });
     } catch (err) {
       ctx.badRequest(null, [{ messages: [{ id: 'An error occurred' }] }]);
@@ -45,7 +45,7 @@ module.exports = {
 
   async getStrapiVersion(ctx) {
     try {
-      const strapiVersion = _.get(strapi.config, 'info.strapi', null);
+      const strapiVersion = strapi.config.get('info.strapi', null);
       return ctx.send({ strapiVersion });
     } catch (err) {
       return ctx.badRequest(null, [
@@ -56,7 +56,8 @@ module.exports = {
 
   async getGaConfig(ctx) {
     try {
-      ctx.send({ uuid: _.get(strapi.config, 'uuid', false) });
+      const uuid = strapi.config.get('uuid', false);
+      ctx.send({ uuid });
     } catch (err) {
       ctx.badRequest(null, [{ messages: [{ id: 'An error occurred' }] }]);
     }

@@ -25,9 +25,7 @@ module.exports = strapi => {
         composeEndpoint(value, { router: strapi.router });
       });
 
-      strapi.router.prefix(
-        _.get(strapi.config, 'currentEnvironment.request.router.prefix', '')
-      );
+      strapi.router.prefix(_.get(strapi.config, 'request.router.prefix', ''));
 
       if (!_.isEmpty(_.get(strapi.admin, 'config.routes', false))) {
         // Create router for admin.

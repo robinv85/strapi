@@ -62,11 +62,7 @@ module.exports = function createComponentBuilder() {
 
       this.contentTypes.set(uid, contentType);
 
-      const defaultConnection = _.get(
-        strapi,
-        ['config', 'currentEnvironment', 'database', 'defaultConnection'],
-        'default'
-      );
+      const defaultConnection = strapi.config.get('database.defaultConnection');
 
       const defaultCollectionName = `${nameToCollectionName(
         pluralize(infos.name)
@@ -177,7 +173,8 @@ module.exports = function createComponentBuilder() {
             this.unsetRelation(oldAttribute);
           }
 
-          newAttribute.autoPopulate = newAttribute.autoPopulate || oldAttribute.autoPopulate;
+          newAttribute.autoPopulate =
+            newAttribute.autoPopulate || oldAttribute.autoPopulate;
 
           return this.setRelation({
             key,

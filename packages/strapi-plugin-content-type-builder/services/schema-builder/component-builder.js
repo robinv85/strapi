@@ -42,11 +42,7 @@ module.exports = function createComponentBuilder() {
         filename: `${nameToSlug(infos.name)}.json`,
       });
 
-      const defaultConnection = _.get(
-        strapi,
-        ['config', 'currentEnvironment', 'database', 'defaultConnection'],
-        'default'
-      );
+      const defaultConnection = strapi.config.get('database.defaultConnection');
 
       const defaultCollectionName = `components_${nameToCollectionName(
         infos.category

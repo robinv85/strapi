@@ -295,7 +295,7 @@ const schemaBuilder = {
     `;
 
     // // Build schema.
-    if (!strapi.config.currentEnvironment.server.production) {
+    if (strapi.config.environment === 'development') {
       // Write schema.
       const schema = makeExecutableSchema({
         typeDefs,

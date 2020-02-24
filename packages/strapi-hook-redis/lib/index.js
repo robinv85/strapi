@@ -38,14 +38,14 @@ module.exports = function(strapi) {
     initialize: () => {
       if (
         _.isEmpty(strapi.models) ||
-        !_.pickBy(strapi.config.connections, {
+        !_.pickBy(strapi.config.get('database.connections'), {
           connector: 'strapi-hook-redis',
         })
       ) {
         return;
       }
 
-      const connections = _.pickBy(strapi.config.connections, {
+      const connections = _.pickBy(strapi.config.get('database.connections'), {
         connector: 'strapi-hook-redis',
       });
 

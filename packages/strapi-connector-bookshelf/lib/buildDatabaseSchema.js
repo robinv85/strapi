@@ -119,7 +119,12 @@ module.exports = async ({
 
     const generateIndexes = async table => {
       try {
-        const connection = strapi.config.connections[definition.connection];
+        const connection = strapi.config.get([
+          'database',
+          'connections',
+          definition.connection,
+        ]);
+
         let columns = Object.keys(attributes).filter(attribute =>
           ['string', 'text'].includes(attributes[attribute].type)
         );

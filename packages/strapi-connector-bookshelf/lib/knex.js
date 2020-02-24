@@ -35,7 +35,7 @@ const defaultConfig = {
 module.exports = strapi => {
   // For each connection in the config register a new Knex connection.
   _.forEach(
-    _.pickBy(strapi.config.connections, {
+    _.pickBy(strapi.config.get('database.connections'), {
       connector: 'bookshelf',
     }),
     (connection, name) => {

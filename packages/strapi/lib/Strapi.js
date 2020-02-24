@@ -84,9 +84,10 @@ class Strapi extends EventEmitter {
     };
 
     this.dir = opts.dir || process.cwd();
+    this.config = loadConfig({ dir: this.dir }, this.initConfig(opts));
+
     this.admin = {};
     this.plugins = {};
-    this.config = this.initConfig(opts);
 
     // internal services.
     this.fs = createStrapiFs(this);
@@ -103,14 +104,27 @@ class Strapi extends EventEmitter {
       launchedAt: Date.now(),
       appPath: this.dir,
       autoReload,
-      host: process.env.HOST || process.env.HOSTNAME || 'localhost',
-      port: process.env.PORT || 1337,
       environment: _.toLower(process.env.NODE_ENV) || 'development',
-      environments: {},
       admin: {},
       paths: CONFIG_PATHS,
-      middleware: {},
-      hook: {},
+      middleware: {
+        timeout: 5000,
+        load: {
+          before: [],
+          after: [],
+          order: [],
+        },
+        settings: {},
+      },
+      hook: {
+        timeout: 5000,
+        load: {
+          before: [],
+          after: [],
+          order: [],
+        },
+        settings: {},
+      },
       functions: {},
       routes: {},
       info: pkgJSON,
@@ -118,24 +132,6 @@ class Strapi extends EventEmitter {
       installedMiddlewares: getPrefixedDeps('strapi-middleware', pkgJSON),
       installedHooks: getPrefixedDeps('strapi-hook', pkgJSON),
     };
-
-    Object.defineProperty(config, 'get', {
-      value(path, defaultValue = null) {
-        return _.get(config, path, defaultValue);
-      },
-      enumerable: false,
-      configurable: false,
-      writable: false,
-    });
-
-    Object.defineProperty(config, 'set', {
-      value(path, value) {
-        return _.set(config, path, value);
-      },
-      enumerable: false,
-      configurable: false,
-      writable: false,
-    });
 
     return config;
   }
@@ -233,34 +229,34 @@ class Strapi extends EventEmitter {
       this.app.use(this.router.routes()).use(this.router.allowedMethods());
 
       // Launch server.
-      this.server.listen(this.config.port, async err => {
-        if (err) return this.stopWithError(err);
+      this.server.listen(
+        this.config.get('server.port'),
+        this.config.get('server.host'),
+        async err => {
+          if (err) return this.stopWithError(err);
 
-        if (!isInitialised) {
-          this.logFirstStartupMessage();
-        } else {
-          this.logStartupMessage();
+          if (!isInitialised) {
+            this.logFirstStartupMessage();
+          } else {
+            this.logStartupMessage();
+          }
+
+          // Emit started event.
+          this.emit('server:started');
+
+          if (cb && typeof cb === 'function') {
+            cb();
+          }
+
+          if (
+            (this.config.environment === 'development' &&
+              this.config.get('server.admin.autoOpen', true) !== false) ||
+            !isInitialised
+          ) {
+            await utils.openBrowser.call(this);
+          }
         }
-
-        // Emit started event.
-        this.emit('server:started');
-
-        if (cb && typeof cb === 'function') {
-          cb();
-        }
-
-        if (
-          (this.config.environment === 'development' &&
-            _.get(
-              this.config.currentEnvironment,
-              'server.admin.autoOpen',
-              true
-            ) !== false) ||
-          !isInitialised
-        ) {
-          await utils.openBrowser.call(this);
-        }
-      });
+      );
     } catch (err) {
       this.stopWithError(err);
     }
@@ -333,7 +329,6 @@ class Strapi extends EventEmitter {
     });
 
     const [
-      config,
       api,
       admin,
       plugins,
@@ -342,7 +337,6 @@ class Strapi extends EventEmitter {
       extensions,
       components,
     ] = await Promise.all([
-      loadConfig(this),
       loadApis(this),
       loadAdmin(this),
       loadPlugins(this),
@@ -351,8 +345,6 @@ class Strapi extends EventEmitter {
       loadExtensions(this.config),
       loadComponents(this),
     ]);
-
-    _.merge(this.config, config);
 
     this.api = api;
     this.admin = admin;
@@ -387,7 +379,7 @@ class Strapi extends EventEmitter {
     this.webhookRunner = createWebhookRunner({
       eventHub: this.eventHub,
       logger: this.log,
-      configuration: this.config.get('currentEnvironment.server.webhooks', {}),
+      configuration: this.config.get('server.webhooks', {}),
     });
 
     // Init core store

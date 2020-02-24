@@ -161,12 +161,15 @@ module.exports = async () => {
   }
 
   if (!(await pluginStore.get({ key: 'advanced' }))) {
+    const host = strapi.config.get('server.host');
+    const port = strapi.config.get('server.port');
+
     const value = {
       unique_email: true,
       allow_register: true,
       email_confirmation: false,
-      email_confirmation_redirection: `http://${strapi.config.currentEnvironment.server.host}:${strapi.config.currentEnvironment.server.port}/admin`,
-      email_reset_password: `http://${strapi.config.currentEnvironment.server.host}:${strapi.config.currentEnvironment.server.port}/admin`,
+      email_confirmation_redirection: `http://${host}:${port}/admin`,
+      email_reset_password: `http://${host}:${port}/admin`,
       default_role: 'authenticated',
     };
 

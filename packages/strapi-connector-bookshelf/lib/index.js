@@ -38,7 +38,7 @@ module.exports = function(strapi) {
   function initialize() {
     initKnex(strapi);
 
-    const { connections } = strapi.config;
+    const connections = strapi.config.get('database.connections');
     const GLOBALS = {};
 
     const connectionsPromises = Object.keys(connections)
