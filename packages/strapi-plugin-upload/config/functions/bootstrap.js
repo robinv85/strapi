@@ -10,37 +10,36 @@
 const _ = require('lodash');
 
 module.exports = async () => {
-  // set plugin store
-  const pluginStore = strapi.store({
-    environment: strapi.config.environment,
-    type: 'plugin',
-    name: 'upload',
-  });
+  const _providers = new Map();
+  strapi.plugins.upload.providers = {
+    get(key) {
+      if (!_providers.has(key)) {
+        throw new Error(
+          `The provider package isn't installed. Please run \`npm install strapi-provider-upload-${key}\``
+        );
+      }
 
-  strapi.plugins.upload.config.providers = [];
+      return _providers.get(key);
+    },
+  };
 
   const installedProviders = Object.keys(strapi.config.info.dependencies)
     .filter(d => d.includes('strapi-provider-upload-'))
     .concat('strapi-provider-upload-local');
 
   for (let installedProvider of _.uniq(installedProviders)) {
-    strapi.plugins.upload.config.providers.push(require(installedProvider));
+    const key = installedProvider.replace('strapi-provider-upload-', '');
+    _providers.set(key, require(installedProvider));
   }
 
-  // if provider config does not exist set one by default
-  const config = await pluginStore.get({ key: 'provider' });
-
-  if (!config) {
-    const provider = _.find(strapi.plugins.upload.config.providers, {
-      provider: 'local',
-    });
-
-    const value = _.assign({}, provider, {
+  strapi.config.plugins.upload = _.merge(
+    {
       enabled: true,
-      // by default limit size to 1 GB
-      sizeLimit: 1000000,
-    });
-
-    await pluginStore.set({ key: 'provider', value });
-  }
+      provider: 'local',
+      providerOptions: {
+        sizeLimit: 1000000,
+      },
+    },
+    strapi.config.plugins.upload
+  );
 };

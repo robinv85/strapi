@@ -7,5 +7,10 @@ module.exports = {
     graphql: {
       amountLimit: 5,
     },
+    upload: {
+      providerOptions: {
+        uploadDir: 'uploads/images',
+      },
+    },
   },
 };

@@ -7,44 +7,47 @@
 // Public node modules.
 const fs = require('fs');
 const path = require('path');
-/* eslint-disable no-unused-vars */
+const { promisify } = require('util');
+
+const unlink = promisify(fs.unlink);
+
 module.exports = {
   provider: 'local',
   name: 'Local server',
-  init: (config) => {
+  // TODO: add folder option
+  init({ uploadDir = 'uploads' }) {
+    const publicDir = strapi.config.get(
+      'middleware.settings.public.path',
+      'public'
+    );
+    const baseDir = path.join(strapi.dir, publicDir, uploadDir);
+
     return {
-      upload: (file) => {
+      upload(file) {
+        const filename = `${file.hash}${file.ext}`;
+
         return new Promise((resolve, reject) => {
-          // write file in public/assets folder
-          fs.writeFile(path.join(strapi.config.public.path, `/uploads/${file.hash}${file.ext}`), file.buffer, (err) => {
-            if (err) {
-              return reject(err);
-            }
+          const reader = fs.createReadStream(file.tmpPath);
+          const stream = fs.createWriteStream(
+            path.join(baseDir, `${filename}`)
+          );
 
-            file.url = `/uploads/${file.hash}${file.ext}`;
+          reader.pipe(stream);
 
+          stream.on('finish', () => {
+            file.url = `/${uploadDir}/${filename}`;
             resolve();
           });
+
+          stream.on('error', reject);
         });
       },
-      delete: (file) => {
-        return new Promise((resolve, reject) => {
-          const filePath = path.join(strapi.config.public.path, `/uploads/${file.hash}${file.ext}`);
 
-          if (!fs.existsSync(filePath)) {
-            return resolve('File doesn\'t exist');
-          }
-
-          // remove file from public/assets folder
-          fs.unlink(filePath, (err) => {
-            if (err) {
-              return reject(err);
-            }
-
-            resolve();
-          });
-        });
-      }
+      async delete(file) {
+        const filename = `${file.hash}${file.ext}`;
+        const filePath = path.join(baseDir, `${filename}`);
+        await unlink(filePath);
+      },
     };
-  }
+  },
 };

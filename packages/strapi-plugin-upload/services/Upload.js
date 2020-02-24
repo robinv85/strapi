@@ -6,21 +6,22 @@
  * @description: A set of functions similar to controller's actions to avoid code duplication.
  */
 
+// const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
+// const crypto = require('crypto');
 const _ = require('lodash');
-const toArray = require('stream-to-array');
+// const toArray = require('stream-to-array');
 const uuid = require('uuid/v4');
 
-function niceHash(buffer) {
-  return crypto
-    .createHash('sha256')
-    .update(buffer)
-    .digest('base64')
-    .replace(/=/g, '')
-    .replace(/\//g, '-')
-    .replace(/\+/, '_');
-}
+// function niceHash(buffer) {
+//   return crypto
+//     .createHash('sha256')
+//     .update(buffer)
+//     .digest('base64')
+//     .replace(/=/g, '')
+//     .replace(/\//g, '-')
+//     .replace(/\+/, '_');
+// }
 
 module.exports = {
   bufferize: async files => {
@@ -32,23 +33,22 @@ module.exports = {
     files = _.isArray(files) ? files : [files];
 
     const createBuffer = async stream => {
-      const parts = await toArray(fs.createReadStream(stream.path));
-      const buffers = parts.map(part =>
-        _.isBuffer(part) ? part : Buffer.from(part)
-      );
+      // const parts = await toArray(fs.createReadStream(stream.path));
+      // const buffers = parts.map(part =>
+      //   _.isBuffer(part) ? part : Buffer.from(part)
+      // );
 
-      const buffer = Buffer.concat(buffers);
+      // const buffer = Buffer.concat(buffers);
 
       return {
         tmpPath: stream.path,
         name: stream.name,
-        sha256: niceHash(buffer),
+        // sha256: niceHash(buffer),
         hash: uuid().replace(/-/g, ''),
         ext:
           stream.name.split('.').length > 1
             ? `.${_.last(stream.name.split('.'))}`
             : '',
-        buffer,
         mime: stream.type,
         size: (stream.size / 1000).toFixed(2),
       };
@@ -59,31 +59,18 @@ module.exports = {
   },
 
   async upload(files, config) {
-    // Get upload provider settings to configure the provider to use.
-    const provider = _.find(strapi.plugins.upload.config.providers, {
-      provider: config.provider,
-    });
-
-    if (!provider) {
-      throw new Error(
-        `The provider package isn't installed. Please run \`npm install strapi-provider-upload-${config.provider}\``
-      );
-    }
-
-    const actions = await provider.init(config);
+    const provider = strapi.plugins.upload.providers.get(config.provider);
+    const actions = await provider.init(config.providerOptions);
 
     // upload a single file
     const uploadFile = async file => {
       await actions.upload(file);
 
-      // Remove buffer to don't save it.
-      delete file.buffer;
-      file.provider = provider.provider;
-
+      file.provider = config.provider;
       const res = await this.add(file);
 
       // Remove temp file
-      if (file.tmpPath) {
+      if (fs.existsSync(file.tmpPath)) {
         fs.unlinkSync(file.tmpPath);
       }
 
@@ -113,15 +100,10 @@ module.exports = {
     return strapi.query('file', 'upload').count(params);
   },
 
-  async remove(file, config) {
-    // get upload provider settings to configure the provider to use
-    const provider = _.cloneDeep(
-      _.find(strapi.plugins.upload.config.providers, {
-        provider: config.provider,
-      })
-    );
-    _.assign(provider, config);
-    const actions = provider.init(config);
+  async remove(file) {
+    const config = strapi.config.get('plugins.upload');
+    const provider = strapi.plugins.upload.providers.get(config.provider);
+    const actions = await provider.init(config.providerOptions);
 
     // execute delete function of the provider
     if (file.provider === provider.provider) {
