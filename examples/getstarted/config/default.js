@@ -31,9 +31,10 @@ module.exports = {
       after: ['parser', 'router'],
     },
     settings: {
+      // disable a middleware
       session: {
         enabled: true,
-      }, // disable a middleware
+      },
       parser: {
         multipart: false,
       },
