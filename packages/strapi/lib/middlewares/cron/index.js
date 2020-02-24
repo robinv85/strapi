@@ -4,7 +4,6 @@
  * Module dependencies
  */
 
-// Public node modules.
 const _ = require('lodash');
 const cron = require('node-schedule');
 
@@ -18,10 +17,14 @@ module.exports = strapi => {
      * Initialize the hook
      */
 
-    initialize() {
-      _.forEach(_.keys(strapi.config.functions.cron), task => {
-        cron.scheduleJob(task, strapi.config.functions.cron[task]);
-      });
+    async initialize() {
+      const tasks = strapi.config.get('functions.cron');
+
+      if (_.isObject(tasks)) {
+        Object.keys(tasks).forEach(task => {
+          cron.scheduleJob(task, tasks[task]);
+        });
+      }
     },
   };
 };

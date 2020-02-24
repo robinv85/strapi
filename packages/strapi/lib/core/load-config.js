@@ -1,40 +1,50 @@
 'use strict';
 
-const { join } = require('path');
-const { existsSync } = require('fs-extra');
+const { join, resolve } = require('path');
+const { exists } = require('fs-extra');
 
-const path = require('path');
 const _ = require('lodash');
-const fs = require('fs');
 const dotEnv = require('dotenv');
+const loadFiles = require('../load/load-files');
 
-const defaultFile = 'default.js';
-const defaultEnv = (process.env.NODE_ENV = 'development');
+const defaultEnv = process.env.NODE_ENV || 'development';
 
-module.exports = (
+const loadConfig = dir =>
+  loadFiles(dir, '*.+(js|json)', {
+    shouldUseFileNameAsKey: () => false,
+    withFileName: false,
+  });
+
+module.exports = async (
   { env = defaultEnv, dir, configDir = 'config', envFile = '.env' } = {},
   defaults
 ) => {
   const config = defaults;
 
-  if (!existsSync(join(dir, 'config'))) {
+  // load env file
+  dotEnv.config({ path: resolve(dir, envFile) });
+
+  if (!(await exists(join(dir, 'config')))) {
     throw new Error(
       `Missing config folder. Please create one in your app root directory`
     );
   }
 
-  dotEnv.config({ path: path.resolve(dir, envFile) });
+  _.merge(config, await loadConfig(join(dir, 'config')));
 
-  const rootConfigDir = path.resolve(dir, configDir);
+  config.functions = await loadFiles(
+    join(dir, configDir, 'functions'),
+    '**/*.+(js|json)',
+    {
+      withFileName: false,
+    }
+  );
 
-  const defaultConfigPath = path.join(rootConfigDir, defaultFile);
-  if (fs.existsSync(defaultConfigPath)) {
-    _.merge(config, require(defaultConfigPath));
-  }
+  const rootConfigDir = resolve(dir, configDir);
+  const envConfPath = join(rootConfigDir, env);
 
-  const envConfPath = path.join(rootConfigDir, `${env}.js`);
-  if (fs.existsSync(envConfPath)) {
-    _.merge(config, require(envConfPath));
+  if (await exists(envConfPath)) {
+    _.merge(config, await loadConfig(join(dir, 'config', env)));
   }
 
   const configurator = Object.assign(config, {

@@ -84,7 +84,7 @@ class Strapi extends EventEmitter {
     };
 
     this.dir = opts.dir || process.cwd();
-    this.config = loadConfig({ dir: this.dir }, this.initConfig(opts));
+    this.config = this.initConfig(opts);
 
     this.admin = {};
     this.plugins = {};
@@ -139,7 +139,7 @@ class Strapi extends EventEmitter {
   requireProjectBootstrap() {
     const bootstrapPath = path.resolve(
       this.dir,
-      'config/functions/bootstrap.js'
+      './config/functions/bootstrap.js'
     );
 
     if (fse.existsSync(bootstrapPath)) {
@@ -328,6 +328,8 @@ class Strapi extends EventEmitter {
       }
     });
 
+    this.config = await loadConfig(this, this.config);
+
     const [
       api,
       admin,
@@ -490,7 +492,7 @@ class Strapi extends EventEmitter {
 
     await Promise.all(pluginBoostraps);
 
-    return execBootstrap(_.get(this.config, ['functions', 'bootstrap']));
+    return execBootstrap(this.config.get('functions.bootstrap'));
   }
 
   async freeze() {

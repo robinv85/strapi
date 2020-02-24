@@ -28,6 +28,7 @@ module.exports = strapi => {
         methods,
         headers,
         keepHeadersOnError,
+        ...options
       } = Object.assign({}, defaults, strapi.config.middleware.settings.cors);
 
       strapi.app.use(
@@ -53,6 +54,7 @@ module.exports = strapi => {
           allowMethods: methods,
           allowHeaders: headers,
           keepHeadersOnError,
+          ...options,
         })
       );
     },

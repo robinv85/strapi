@@ -56,8 +56,10 @@ const db = {
 };
 
 module.exports = {
-  defaultConnection: 'default',
-  connections: {
-    default: process.env.DB ? db[process.env.DB] || db.sqlite : db.sqlite,
+  database: {
+    defaultConnection: 'default',
+    connections: {
+      default: process.env.DB ? db[process.env.DB] || db.sqlite : db.sqlite,
+    },
   },
 };

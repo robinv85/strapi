@@ -22,6 +22,7 @@ const loadFiles = async (
     requireFn = require,
     shouldUseFileNameAsKey = () => true,
     globArgs = {},
+    withFileName = true,
   } = {}
 ) => {
   const root = {};
@@ -34,12 +35,14 @@ const loadFiles = async (
     delete require.cache[absolutePath];
     const mod = requireFn(absolutePath);
 
-    Object.defineProperty(mod, '__filename__', {
-      enumerable: true,
-      configurable: false,
-      writable: false,
-      value: path.basename(file),
-    });
+    if (withFileName === true) {
+      Object.defineProperty(mod, '__filename__', {
+        enumerable: true,
+        configurable: false,
+        writable: false,
+        value: path.basename(file),
+      });
+    }
 
     const propPath = filePathToPath(file, shouldUseFileNameAsKey(file));
 

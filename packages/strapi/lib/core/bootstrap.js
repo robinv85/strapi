@@ -233,7 +233,7 @@ module.exports = function(strapi) {
 
       return acc;
     },
-    {}
+    strapi.config.middleware.settings
   );
 
   strapi.config.hook.settings = Object.keys(strapi.hook).reduce(
