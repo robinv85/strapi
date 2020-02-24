@@ -1,9 +1,10 @@
 {
   "language": {
     "enabled": false,
+    "key": "locale",
+    "extension": ".json",
     "defaultLocale": "en_us",
     "locales": ["en_us"],
-    "modes": ["query", "subdomain", "cookie", "header", "url", "tld"],
-    "cookieName": "locale"
+    "modes": ["query", "subdomain", "cookie", "header", "url", "tld"]
   }
 }
