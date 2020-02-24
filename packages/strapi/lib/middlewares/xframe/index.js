@@ -21,9 +21,9 @@ module.exports = strapi => {
           return await convert(xframe(defaults.xframe))(ctx, next);
         }
 
-        if (strapi.config.currentEnvironment.security.xframe.enabled) {
+        if (strapi.config.get('middleware.settings.xframe.enabled')) {
           return await convert(
-            xframe(strapi.config.middleware.settings.xframe.value)
+            xframe(strapi.config.get('middleware.settings.xframe.value'))
           )(ctx, next);
         }
 

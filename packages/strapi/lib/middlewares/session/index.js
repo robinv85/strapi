@@ -19,31 +19,20 @@ module.exports = strapi => {
      */
 
     initialize() {
-      strapi.app.keys =
-        _.get(strapi.config.middleware.settings.session, 'secretKeys') ||
-        strapi.config.hooks.session.secretKeys;
+      const config = strapi.config.get('middleware.settings.session');
 
-      if (
-        _.has(strapi.config.middleware.settings.session, 'client') &&
-        _.isString(strapi.config.middleware.settings.session.client) &&
-        strapi.config.middleware.settings.session.client !== 'cookie'
-      ) {
-        const store = hook.defineStore(
-          strapi.config.middleware.settings.session
-        );
+      strapi.app.keys = _.get(config, 'secretKeys');
+
+      if (!_.has(config, 'client') || !_.isString(config.client)) return;
+
+      if (config.client !== 'cookie') {
+        const store = hook.defineStore(config);
 
         if (!_.isEmpty(store)) {
-          // Options object contains the defined store, the custom hooks configurations
-          // and also the function which are located to `./config/functions/session.js`
-          const options = _.assign(
-            {
-              store,
-            },
-            strapi.config.hook.session,
-            strapi.config.middleware.settings.session
-          );
+          const options = _.assign({ store }, config);
 
           strapi.app.use(session(options, strapi.app));
+
           strapi.app.use((ctx, next) => {
             ctx.state = ctx.state || {};
             ctx.state.session = ctx.session || {};
@@ -51,17 +40,11 @@ module.exports = strapi => {
             return next();
           });
         }
-      } else if (
-        _.has(strapi.config.middleware.settings.session, 'client') &&
-        _.isString(strapi.config.middleware.settings.session.client) &&
-        strapi.config.middleware.settings.session.client === 'cookie'
-      ) {
-        const options = _.assign(
-          strapi.config.hook.session,
-          strapi.config.middleware.settings.session
-        );
+      } else if (config.client === 'cookie') {
+        const options = _.assign(config);
 
         strapi.app.use(session(options, strapi.app));
+
         strapi.app.use((ctx, next) => {
           ctx.state = ctx.state || {};
           ctx.state.session = ctx.session || {};
@@ -80,21 +63,17 @@ module.exports = strapi => {
         return strapi.log.error(
           '(middleware:session) please provide connection for the session store'
         );
-      } else if (
-        !_.get(
-          strapi,
-          `config.currentEnvironment.database.connections.${session.connection}`
-        )
-      ) {
+      } else if (!strapi.get(['database', 'connections', session.connection])) {
         return strapi.log.error(
           '(middleware:session) please provide a valid connection for the session store'
         );
       }
 
-      session.settings = _.get(
-        strapi,
-        `config.currentEnvironment.database.connections.${session.connection}`
-      );
+      session.settings = strapi.config.get([
+        'database',
+        'connections',
+        session.connection,
+      ]);
 
       // Define correct store name to avoid require to failed.
       switch (session.client.toLowerCase()) {
@@ -159,7 +138,6 @@ module.exports = strapi => {
     },
 
     requireStore(store) {
-      // eslint-disable-next-line no-useless-catch
       try {
         return require(path.resolve(
           strapi.config.appPath,
@@ -167,7 +145,9 @@ module.exports = strapi => {
           'koa-' + store
         ));
       } catch (err) {
-        throw err;
+        throw new Error(
+          `Error requiring session store "${store}": ${err.message}`
+        );
       }
     },
   };

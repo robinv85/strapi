@@ -193,110 +193,50 @@ module.exports = function(strapi) {
     });
   });
 
-  // Define required middlewares categories.
-  const middlewareCategories = ['request', 'response', 'security', 'server'];
-
-  // Flatten middlewares configurations.
-  const flattenMiddlewaresConfig = middlewareCategories.reduce((acc, index) => {
-    const current = _.merge(strapi.config.currentEnvironment[index], {
-      public: _.defaults(strapi.config.public, {
-        enabled: true,
-      }),
-      favicon: _.defaults(strapi.config.favicon, {
-        enabled: true,
-      }),
-    });
-
-    if (_.isObject(current)) {
-      acc = _.merge(acc, current);
-    } else {
-      acc[index] = current;
-    }
-
-    return acc;
-  }, {});
-
-  // These middlewares cannot be disabled.
-  _.merge(flattenMiddlewaresConfig, {
-    // Necessary middlewares for the core.
-    responses: {
-      enabled: true,
-    },
-    router: {
-      enabled: true,
-    },
-    logger: {
-      enabled: true,
-    },
-    boom: {
-      enabled: true,
-    },
-    cors: {
-      enabled: true,
-    },
-    xframe: {
-      enabled: true,
-    },
-    xss: {
-      enabled: true,
-    },
-  });
-
-  // Exclude database and custom.
-  middlewareCategories.push('database');
-
-  // Flatten hooks configurations.
-  const flattenHooksConfig = _.pullAll(
-    Object.keys(strapi.config.currentEnvironment),
-    middlewareCategories
-  ).reduce((acc, index) => {
-    const current = strapi.config.currentEnvironment[index];
-
-    if (_.isObject(current)) {
-      acc = _.merge(acc, {
-        [index]: current,
-      });
-    } else {
-      acc[index] = current;
-    }
-
-    return acc;
-  }, {});
-
-  // Enable hooks and dependencies related to the connections.
-  const connections = strapi.config.get('database.connections');
-
-  for (let name in connections) {
-    const connection = connections[name];
-    const connector = connection.connector.replace('strapi-hook-', '');
-
-    enableHookNestedDependencies(strapi, connector, flattenHooksConfig);
-  }
+  const REQUIRED_MIDDLEWARES = [
+    'public',
+    'favicon',
+    'responses',
+    'router',
+    'logger',
+    'boom',
+    'cors',
+    'xframe',
+    'xss',
+  ];
 
   // Preset config in alphabetical order.
   strapi.config.middleware.settings = Object.keys(strapi.middleware).reduce(
-    (acc, current) => {
-      // Try to find the settings in the current environment, then in the main configurations.
-      const currentSettings = _.merge(
-        _.get(
-          _.cloneDeep(strapi.middleware[current]),
-          ['defaults', current],
-          {}
-        ),
-        flattenMiddlewaresConfig[current] ||
-          strapi.config.currentEnvironment[current] ||
-          strapi.config[current]
-      );
-      acc[current] = !_.isObject(currentSettings) ? {} : currentSettings;
+    (acc, middlewareName) => {
+      const middleware = strapi.middleware[middlewareName];
 
-      if (!_.has(acc[current], 'enabled')) {
+      const defaultSettings = _.get(
+        middleware,
+        ['defaults', middlewareName],
+        {}
+      );
+
+      const currentSettings = _.merge(
+        {},
+        _.cloneDeep(defaultSettings),
+        strapi.config.get(['middleware', 'settings', middlewareName], {})
+      );
+
+      // force required middlewares
+      if (REQUIRED_MIDDLEWARES.includes(middlewareName)) {
+        _.set(currentSettings, 'enabled', true);
+      }
+
+      acc[middlewareName] = currentSettings;
+
+      if (!_.has(acc[middlewareName], 'enabled')) {
         strapi.log.warn(
-          `(middleware:${current}) wasn't loaded due to missing key \`enabled\` in the configuration`
+          `(middleware:${middlewareName}) wasn't loaded due to missing key \`enabled\` in the configuration`
         );
       }
 
       // Ensure that enabled key exist by forcing to false.
-      _.defaults(acc[current], { enabled: false });
+      _.defaults(acc[middlewareName], { enabled: false });
 
       return acc;
     },
@@ -304,25 +244,27 @@ module.exports = function(strapi) {
   );
 
   strapi.config.hook.settings = Object.keys(strapi.hook).reduce(
-    (acc, current) => {
-      // Try to find the settings in the current environment, then in the main configurations.
+    (acc, hookName) => {
+      const hook = strapi.hook[hookName];
+
+      const defaultSettings = _.get(hook, ['defaults', hookName], {});
+
       const currentSettings = _.merge(
-        _.get(_.cloneDeep(strapi.hook[current]), ['defaults', current], {}),
-        flattenHooksConfig[current] ||
-          _.get(strapi.config.currentEnvironment, ['hook', current]) ||
-          _.get(strapi.config, ['hook', current])
+        {},
+        _.cloneDeep(defaultSettings),
+        strapi.config.get(['hook', 'settings', hookName], {})
       );
 
-      acc[current] = !_.isObject(currentSettings) ? {} : currentSettings;
+      acc[hookName] = currentSettings;
 
-      if (!_.has(acc[current], 'enabled')) {
+      if (!_.has(acc[hookName], 'enabled')) {
         strapi.log.warn(
-          `(hook:${current}) wasn't loaded due to missing key \`enabled\` in the configuration`
+          `(hook:${hookName}) wasn't loaded due to missing key \`enabled\` in the configuration`
         );
       }
 
       // Ensure that enabled key exist by forcing to false.
-      _.defaults(acc[current], { enabled: false });
+      _.defaults(acc[hookName], { enabled: false });
 
       return acc;
     },
@@ -348,65 +290,4 @@ module.exports = function(strapi) {
   const adminPath = strapi.config.get('server.admin.path', 'admin');
 
   strapi.config.admin.url = new URL(adminPath, strapi.config.url).toString();
-
-  console.log(strapi.config.middleware);
-};
-
-const enableHookNestedDependencies = function(
-  strapi,
-  name,
-  flattenHooksConfig,
-  force = false
-) {
-  // Couldn't find configurations for this hook.
-  if (_.isEmpty(_.get(flattenHooksConfig, name, true))) {
-    // Check if database connector is used
-    const modelsUsed = Object.keys(
-      _.assign(_.clone(strapi.api) || {}, strapi.plugins)
-    )
-      .filter(x =>
-        _.isObject(
-          _.get(strapi.api, [x, 'models']) ||
-            _.get(strapi.plugins, [x, 'models'])
-        )
-      ) // Filter API with models
-      .map(
-        x =>
-          _.get(strapi.api, [x, 'models']) ||
-          _.get(strapi.plugins, [x, 'models'])
-      ) // Keep models
-      .filter(models => {
-        const apiModelsUsed = Object.keys(models).filter(model => {
-          const connector = _.get(
-            strapi.config.get('database.connections'),
-            models[model].connection,
-            {}
-          ).connector;
-
-          if (connector) {
-            return connector.replace('strapi-hook-', '') === name;
-          }
-
-          return false;
-        });
-
-        return apiModelsUsed.length !== 0;
-      }); // Filter model with the right connector
-
-    flattenHooksConfig[name] = {
-      enabled: force || modelsUsed.length > 0, // Will return false if there is no model, else true.
-    };
-
-    // Enabled dependencies.
-    if (_.get(strapi.hook, `${name}.dependencies`, []).length > 0) {
-      strapi.hook[name].dependencies.forEach(dependency => {
-        enableHookNestedDependencies(
-          strapi,
-          dependency.replace('strapi-hook-', ''),
-          flattenHooksConfig,
-          true
-        );
-      });
-    }
-  }
 };

@@ -404,7 +404,11 @@ class Strapi extends EventEmitter {
     });
 
     // Initialize hooks and middlewares.
-    await initializeMiddlewares.call(this);
+    await initializeMiddlewares({
+      middlewareConfig: this.config.get('middleware'),
+      middlewares: this.middleware,
+    });
+
     await initializeHooks.call(this);
   }
 

@@ -25,9 +25,9 @@ module.exports = strapi => {
           )(ctx, next);
         }
 
-        if (strapi.config.currentEnvironment.security.xss.enabled) {
+        if (strapi.config.get('middleware.settings.xss.enabled')) {
           return await convert(
-            xssProtection(strapi.config.middleware.settings.xss)
+            xssProtection(strapi.config.get('middleware.settings.xss'))
           )(ctx, next);
         }
 

@@ -23,7 +23,7 @@ module.exports = {
       },
     },
   },
-  middlewares: {
+  middleware: {
     timeout: 3000,
     load: {
       before: ['responseTime', 'logger', 'cors', 'responses', 'gzip'],
@@ -31,7 +31,9 @@ module.exports = {
       after: ['parser', 'router'],
     },
     settings: {
-      session: false, // disable a middleware
+      session: {
+        enabled: true,
+      }, // disable a middleware
       parser: {
         multipart: false,
       },

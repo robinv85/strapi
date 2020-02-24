@@ -2,14 +2,12 @@
 
 const { uniq, difference, get, isUndefined, merge } = require('lodash');
 
-module.exports = async function() {
+module.exports = async function({ middlewareConfig, middlewares }) {
   /** Utils */
-
-  const middlewareConfig = this.config.middleware;
 
   // check if a middleware exists
   const middlewareExists = key => {
-    return !isUndefined(this.middleware[key]);
+    return !isUndefined(middlewares[key]);
   };
 
   // check if a middleware is enabled
@@ -17,15 +15,13 @@ module.exports = async function() {
     get(middlewareConfig, ['settings', key, 'enabled'], false) === true;
 
   // list of enabled middlewares
-  const enabledMiddlewares = Object.keys(this.middleware).filter(
-    middlewareEnabled
-  );
+  const enabledMiddlewares = Object.keys(middlewares).filter(middlewareEnabled);
 
   // Method to initialize middlewares and emit an event.
   const initialize = middlewareKey => {
-    if (this.middleware[middlewareKey].loaded === true) return;
+    if (middlewares[middlewareKey].loaded === true) return;
 
-    const module = this.middleware[middlewareKey].load;
+    const module = middlewares[middlewareKey].load;
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(
@@ -34,16 +30,13 @@ module.exports = async function() {
         middlewareConfig.timeout || 1000
       );
 
-      this.middleware[middlewareKey] = merge(
-        this.middleware[middlewareKey],
-        module
-      );
+      middlewares[middlewareKey] = merge(middlewares[middlewareKey], module);
 
       Promise.resolve()
         .then(() => module.initialize())
         .then(() => {
           clearTimeout(timeout);
-          this.middleware[middlewareKey].loaded = true;
+          middlewares[middlewareKey].loaded = true;
           resolve();
         })
         .catch(err => {
@@ -63,7 +56,7 @@ module.exports = async function() {
   // Run beforeInitialize of every middleware
   await Promise.all(
     enabledMiddlewares.map(key => {
-      const { beforeInitialize } = this.middleware[key].load;
+      const { beforeInitialize } = middlewares[key].load;
       if (typeof beforeInitialize === 'function') {
         return beforeInitialize();
       }
