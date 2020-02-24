@@ -27,13 +27,6 @@ module.exports = function(strapi) {
 
   // Set connections.
   strapi.connections = {};
-
-  if (_.get(strapi.config, 'language.enabled')) {
-    strapi.config.language.locales = Object.keys(
-      _.get(strapi.config, 'locales', {})
-    );
-  }
-
   strapi.contentTypes = {};
 
   Object.keys(strapi.components).forEach(key => {

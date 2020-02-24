@@ -70,11 +70,20 @@ module.exports = async function({ middlewareConfig, middlewares }) {
     }
   };
 
-  const middlewaresBefore = get(middlewareConfig, 'load.before', [])
+  const middlewaresBefore = get(middlewareConfig, 'load.before', [
+    'responseTime',
+    'logger',
+    'cors',
+    'responses',
+    'gzip',
+  ])
     .filter(middlewareExists)
     .filter(middlewareEnabled);
 
-  const middlewaresAfter = get(middlewareConfig, 'load.after', [])
+  const middlewaresAfter = get(middlewareConfig, 'load.after', [
+    'parser',
+    'router',
+  ])
     .filter(middlewareExists)
     .filter(middlewareEnabled);
 
