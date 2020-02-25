@@ -1,6 +1,5 @@
 'use strict';
 
-const fs = require('fs');
 const util = require('util');
 const AWS = require('aws-sdk');
 
@@ -31,7 +30,7 @@ module.exports = {
 
         const { Location } = await uploadFile({
           Key: `${path}${file.hash}${file.ext}`,
-          Body: file.createReadStream(file.tmpPath),
+          Body: file.createReadStream(),
           ACL: 'public-read',
           ContentType: file.mime,
         });

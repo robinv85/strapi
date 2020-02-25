@@ -2,7 +2,6 @@
 
 // Public node modules.
 const pkgcloud = require('pkgcloud');
-const fs = require('fs');
 
 module.exports = {
   provider: 'rackspace',
@@ -43,10 +42,7 @@ module.exports = {
                 resolve(
                   Object.assign(file, {
                     name: result.name,
-                    hash: file.hash,
-                    ext: file.ext,
                     mime: result.contentType,
-                    size: file.size,
                     url: `${data.cdnSslUri}/${result.name}`,
                   })
                 )

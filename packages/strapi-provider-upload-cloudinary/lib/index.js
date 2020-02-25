@@ -1,7 +1,6 @@
 'use strict';
 
 // Public node modules.
-const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 
 module.exports = {
