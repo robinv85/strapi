@@ -1,49 +1,19 @@
 'use strict';
 
-/**
- * Module dependencies
- */
-
 // Public node modules.
 const pkgcloud = require('pkgcloud');
-const streamifier = require('streamifier');
-/* eslint-disable no-unused-vars */
+const fs = require('fs');
 
 module.exports = {
-  provider: 'rackspace-cloudfiles',
+  provider: 'rackspace',
   name: 'Rackspace Cloud',
-  auth: {
-    username: {
-      label: 'Username',
-      type: 'text',
-    },
-    apiKey: {
-      label: 'API Key',
-      type: 'text',
-    },
-    container: {
-      label: 'Container Name',
-      type: 'text',
-    },
-    region: {
-      label: 'Region',
-      type: 'enum',
-      values: [
-        'DFW (Dallas-Fort Worth, TX, US)',
-        'HKG (Hong Kong, China)',
-        'IAD (Blacksburg, VA, US)',
-        'LON (London, England)',
-        'SYD (Sydney, Australia)',
-      ],
-    },
-  },
-  init: config => {
+  init(config) {
     const options = { container: config.container };
     const client = pkgcloud.storage.createClient({
       provider: 'rackspace',
       username: config.username,
       apiKey: config.apiKey,
-      region: config.region.replace(/(\s.*\))$/gi, ''),
+      region: config.region,
     });
 
     const remoteURL = () =>
@@ -54,21 +24,16 @@ module.exports = {
         });
       });
 
-    const byteSize = bytes => {
-      if (bytes === 0) return 0;
-      const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
-      return i === 0 ? bytes : `${(bytes / 1024 ** i).toFixed(1)}`;
-    };
-
     return {
-      upload: file => {
-        const readStream = streamifier.createReadStream(file.buffer);
+      upload(file) {
+        const readStream = file.createReadStream();
         const writeStream = client.upload(
           Object.assign({}, options, {
             remote: file.name,
             contentType: file.mime,
           })
         );
+
         return new Promise((resolve, reject) => {
           readStream.pipe(writeStream);
           writeStream.on('error', error => error && reject(error));
@@ -83,15 +48,15 @@ module.exports = {
                     mime: result.contentType,
                     size: file.size,
                     url: `${data.cdnSslUri}/${result.name}`,
-                    provider: 'Rackspace Cloud',
                   })
                 )
               )
-              .catch(err => console.error(err) && reject(err));
+              .catch(err => reject(err));
           });
         });
       },
-      delete: file => {
+
+      delete(file) {
         return new Promise((resolve, reject) => {
           client.removeFile(config.container, file.name, error => {
             if (error) return reject(error);

@@ -1,18 +1,8 @@
+'use strict';
+
 const path = require('path');
 const _ = require('lodash');
-const crypto = require('crypto');
-const toArray = require('stream-to-array');
 const uuid = require('uuid/v4');
-
-function niceHash(buffer) {
-  return crypto
-    .createHash('sha256')
-    .update(buffer)
-    .digest('base64')
-    .replace(/=/g, '')
-    .replace(/\//g, '-')
-    .replace(/\+/, '_');
-}
 
 module.exports = {
   mutation: `
@@ -25,8 +15,8 @@ module.exports = {
       files: {
         resolver: {
           plugin: 'upload',
-          handler: 'Upload.find'
-        }
+          handler: 'Upload.find',
+        },
       },
     },
     Mutation: {
@@ -40,16 +30,9 @@ module.exports = {
         resolver: async (obj, { file: upload, ...fields }) => {
           const file = await formatFile(upload, fields);
 
-          const config = await strapi
-            .store({
-              environment: strapi.config.environment,
-              type: 'plugin',
-              name: 'upload',
-            })
-            .get({ key: 'provider' });
-
-          const uploadedFiles = await strapi.plugins.upload.services.upload.upload(
-            [file],
+          const config = strapi.plugins.upload.config;
+          const uploadedFiles = await strapi.plugins.upload.services.upload.uploadFile(
+            file,
             config
           );
 
@@ -66,15 +49,8 @@ module.exports = {
             uploads.map(upload => formatFile(upload, fields))
           );
 
-          const config = await strapi
-            .store({
-              environment: strapi.config.environment,
-              type: 'plugin',
-              name: 'upload',
-            })
-            .get({ key: 'provider' });
-
-          const uploadedFiles = await strapi.plugins.upload.services.upload.upload(
+          const config = strapi.plugins.upload.config;
+          const uploadedFiles = await strapi.plugins.upload.services.upload.uploadFiles(
             files,
             config
           );
@@ -87,26 +63,35 @@ module.exports = {
   },
 };
 
+const streamToSize = stream => {
+  // / 1000).toFixed(2)
+  let size = 0;
+  return new Promise((resolve, reject) => {
+    stream.on('readable', () => {
+      var chunk;
+      while ((chunk = stream.read())) {
+        size += chunk.length;
+      }
+    });
+
+    stream.on('end', () => resolve((size / 1000).toFixed(2)));
+    stream.on('error', err => reject(err));
+  });
+};
+
 const formatFile = async (upload, fields) => {
+  const uploadService = strapi.plugins.upload.services.upload;
   const { filename, mimetype, createReadStream } = await upload;
 
-  const stream = createReadStream();
-
-  const parts = await toArray(stream);
-  const buffers = parts.map(part =>
-    _.isBuffer(part) ? part : Buffer.from(part)
-  );
-
-  const buffer = Buffer.concat(buffers);
-
   const fileData = {
+    createReadStream,
+    unlinkTmp() {},
     name: filename,
-    sha256: niceHash(buffer),
+    sha256: await uploadService.niceHash({ createReadStream }),
     hash: uuid().replace(/-/g, ''),
     ext: path.extname(filename),
-    buffer,
     mime: mimetype,
-    size: (buffer.length / 1000).toFixed(2),
+    size: await streamToSize(createReadStream()),
   };
 
   const { refId, ref, source, field } = fields;
@@ -121,6 +106,10 @@ const formatFile = async (upload, fields) => {
         field,
       },
     ];
+  }
+
+  if (fields.path) {
+    fileData.path = fields.path;
   }
 
   return fileData;

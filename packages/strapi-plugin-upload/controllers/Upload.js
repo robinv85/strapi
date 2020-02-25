@@ -11,74 +11,49 @@ const _ = require('lodash');
 module.exports = {
   async upload(ctx) {
     const uploadService = strapi.plugins.upload.services.upload;
+    const { errors, validators } = strapi.plugins.upload.services.validation;
 
-    const config = strapi.config.get('plugins.upload');
+    const config = strapi.plugins.upload.config;
 
     if (config.enabled === false) {
-      throw strapi.errors.badRequest('UploadDisabled', {
-        errors: [
-          {
-            id: 'Upload.status.disabled',
-            message: 'File upload is disabled',
-          },
-        ],
-      });
+      throw strapi.errors.badRequest(null, { errors: [errors.uploadDisabled] });
     }
 
     const { refId, ref, source, field, path } = ctx.request.body || {};
-    const { files = {} } = ctx.request.files || {};
+
+    const requestFiles = _.get(ctx.request.files, 'files', []);
+    const files = Array.isArray(requestFiles) ? requestFiles : [requestFiles];
 
     if (_.isEmpty(files)) {
-      throw strapi.errors.badRequest('EmptyFiles', {
-        errors: [
-          {
-            id: 'Upload.status.empty',
-            message: 'Files are empty',
-          },
-        ],
-      });
+      throw strapi.errors.badRequest(null, { errors: [errors.emptyFiles] });
     }
 
-    const formattedFiles = await uploadService.bufferize(files);
+    const enhanceFile = async file => {
+      validators.validateFileSize(file, config);
 
-    const enhancedFiles = formattedFiles.map(file => {
-      if (file.size > config.sizeLimit) {
-        throw strapi.errors.badRequest('SizeLimit', {
-          errors: [
-            {
-              id: 'Upload.status.sizeLimit',
-              message: `${file.name} file is bigger than limit size!`,
-              values: { file: file.name },
-            },
-          ],
-        });
-      }
+      const enhancedFile = await uploadService.bufferize(file);
 
       // Add details to the file to be able to create the relationships.
       if (refId && ref && field) {
-        Object.assign(file, {
-          related: [
-            {
-              refId,
-              ref,
-              source,
-              field,
-            },
-          ],
-        });
+        enhancedFile.related = [{ refId, ref, source, field }];
       }
 
-      // Update uploading folder path for the file.
+      // TODO: check if documented
       if (path) {
-        Object.assign(file, {
-          path: path,
-        });
+        enhancedFile.path = path;
       }
 
-      return file;
-    });
+      return enhancedFile;
+    };
 
-    const uploadedFiles = await uploadService.upload(enhancedFiles, config);
+    const enhancedFiles = await Promise.all(
+      files.map(file => enhanceFile(file))
+    );
+
+    const uploadedFiles = await uploadService.uploadFiles(
+      enhancedFiles,
+      config
+    );
 
     // Send 200 `ok`
     ctx.send(uploadedFiles);

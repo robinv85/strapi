@@ -27,7 +27,7 @@ module.exports = {
         const filename = `${file.hash}${file.ext}`;
 
         return new Promise((resolve, reject) => {
-          const reader = fs.createReadStream(file.tmpPath);
+          const reader = file.createReadStream();
           const stream = fs.createWriteStream(
             path.join(baseDir, `${filename}`)
           );

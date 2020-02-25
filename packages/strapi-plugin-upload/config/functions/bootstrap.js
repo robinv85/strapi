@@ -1,12 +1,5 @@
 'use strict';
 
-/**
- * An asynchronous bootstrap function that runs before
- * your application gets started.
- *
- * This gives you an opportunity to set up your data model,
- * run jobs, or perform some special logic.
- */
 const _ = require('lodash');
 
 module.exports = async () => {
@@ -31,15 +24,4 @@ module.exports = async () => {
     const key = installedProvider.replace('strapi-provider-upload-', '');
     _providers.set(key, require(installedProvider));
   }
-
-  strapi.config.plugins.upload = _.merge(
-    {
-      enabled: true,
-      provider: 'local',
-      providerOptions: {
-        sizeLimit: 1000000,
-      },
-    },
-    strapi.config.plugins.upload
-  );
 };
